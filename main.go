@@ -2,37 +2,46 @@ package main
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
-func Craw(routineId int, url int) {
-	fmt.Println("Routine ID: ", routineId, " craw url: ", url)
+func startWorker(queue chan int, name string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for i := range queue {
+		fmt.Printf("Worker %s is crawling URL %d.\n", name, i)
+		time.Sleep(time.Second / 10)
+	}
+
+	fmt.Printf("Worker %s has finished.\n", name)
 }
 
 func main() {
-	fmt.Printf("Crawler \n")
-	numURL := 100
-	numChan := 5
-	numRoutine := 10
+	fmt.Println("Hello, playground")
 
-	ch := make(chan int, numChan)
+	numberOfURL := 100
+	numberOfWorker := 5
+
+	wg := new(sync.WaitGroup)
+	wg.Add(numberOfWorker)
+
+	queue := make(chan int, numberOfURL)
 
 	go func() {
-		for i := 1; i <= numURL; i++ {
-			fmt.Println("Send URL: ", i)
-			ch <- i
+		for i := 1; i <= numberOfURL; i++ {
+			queue <- i
 		}
-		fmt.Println("Sent")
+		close(queue)
 	}()
 
-	for i := 1; i <= numRoutine; i++ {
-		go func(i int, ch chan int) {
-			for {
-				x := <-ch
-				Craw(i, x)
-			}
-		}(i, ch)
+	for i := 1; i <= numberOfWorker; i++ {
+		go func(s string) {
+			startWorker(queue, s, wg)
+		}(fmt.Sprintf("%d", i))
 	}
 
-	time.Sleep(time.Second * 10)
+	wg.Wait()
+
+	fmt.Println("All workers are done!!!")
 }
